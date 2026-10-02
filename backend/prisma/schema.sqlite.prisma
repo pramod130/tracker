@@ -1,0 +1,234 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   String            @id @default(uuid())
+  name                 String
+  email                String            @unique
+  passwordHash         String
+  profileImage         String?
+  goalCategory         String            @default("PERSONAL")
+  difficultyPreference String            @default("NORMAL")
+  totalXP              Int               @default(0)
+  level                Int               @default(1)
+  currentStreak        Int               @default(0)
+  longestStreak        Int               @default(0)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  preferences           UserPreferences?
+  tasks                 Task[]
+  taskLogs              TaskLog[]
+  dailySummaries        DailySummary[]
+  streaks               Streak?
+  userAchievements      UserAchievement[]
+  xpTransactions        XPTransaction[]
+  notifications         Notification[]
+  refreshTokens         RefreshToken[]
+  createdChallenges     Challenge[]             @relation("CreatedChallenges")
+  challengeParticipants ChallengeParticipant[]
+  sentFriendRequests    Friend[]                @relation("SentFriendRequests")
+  receivedFriendReqs    Friend[]                @relation("ReceivedFriendRequests")
+}
+
+model UserPreferences {
+  id                        String   @id @default(uuid())
+  userId                    String   @unique
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyMinimum              Int      @default(4)
+  notificationsEnabled      Boolean  @default(true)
+  motivationalNotifications Boolean  @default(true)
+  reminderTime              String   @default("20:00")
+  weekendMode               Boolean  @default(false)
+  streakFreezeEnabled       Boolean  @default(true)
+  theme                     String   @default("winter_dark")
+  privacySetting            String   @default("FRIENDS_ONLY")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+model Task {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  type            String   @default("DAILY_HABIT")
+  category        String   @default("PERSONAL")
+  icon            String   @default("check-circle")
+  frequency       String   @default("DAILY")
+  daysOfWeek      String   @default("[]") // JSON string for SQLite
+  targetValue     Float    @default(1.0)
+  unit            String   @default("times")
+  points          Int      @default(10)
+  reminderEnabled Boolean  @default(false)
+  reminderTime    String?  @default("08:00")
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  taskLogs TaskLog[]
+}
+
+model TaskLog {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  completedAt DateTime @default(now())
+  value       Float    @default(1.0)
+  xpEarned    Int      @default(10)
+  notes       String?
+
+  @@unique([taskId, date])
+}
+
+model DailySummary {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           String
+  tasksAssigned  Int      @default(0)
+  tasksCompleted Int      @default(0)
+  completionRate Float    @default(0.0)
+  goalMet        Boolean  @default(false)
+  xpEarned       Int      @default(0)
+  streakStatus   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Streak {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak      Int      @default(0)
+  longestStreak      Int      @default(0)
+  freezesAvailable   Int      @default(1)
+  freezeUsedDates    String   @default("[]")
+  restDaysAllowed    String   @default("[]")
+  lastSuccessfulDate String?
+  updatedAt          DateTime @updatedAt
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String
+  icon        String
+  category    String   @default("GENERAL")
+  xpReward    Int      @default(50)
+  targetCount Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  category    String   @default("PERSONAL")
+  targetCount Int      @default(28)
+  xpReward    Int      @default(100)
+  startDate   DateTime
+  endDate     DateTime
+  icon        String   @default("trophy")
+  creatorId   String?
+  creator     User?    @relation("CreatedChallenges", fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(uuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress    Int       @default(0)
+  status      String    @default("ACTIVE")
+  joinedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([challengeId, userId])
+}
+
+model Friend {
+  id          String   @id @default(uuid())
+  requesterId String
+  requester   User     @relation("SentFriendRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User     @relation("ReceivedFriendRequests", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([requesterId, addresseeId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("TASK_REMINDER")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model XPTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Int
+  source      String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model TaskTemplate {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  category      String
+  type          String   @default("DAILY_HABIT")
+  icon          String
+  defaultPoints Int      @default(10)
+  targetValue   Float    @default(1.0)
+  unit          String   @default("times")
+  createdAt     DateTime @default(now())
+}

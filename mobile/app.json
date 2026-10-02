@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Winter Arc",
+    "slug": "winter-arc-discipline",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.winterarc.discipline"
+    },
+    "android": {
+      "package": "com.winterarc.discipline"
+    }
+  }
+}
