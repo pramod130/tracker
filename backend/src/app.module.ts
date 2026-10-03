@@ -13,6 +13,7 @@ import { FriendsModule } from './friends/friends.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AICoachModule } from './ai/ai-coach.module';
 import { CronModule } from './cron/cron.module';
+import { AppController } from './app.controller';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -33,6 +34,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     AICoachModule,
     CronModule,
   ],
+  controllers: [AppController],
+
   providers: [
     {
       provide: APP_GUARD,

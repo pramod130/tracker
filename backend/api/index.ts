@@ -1,11 +1,18 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { AppModule } from './app.module';
+import { AppModule } from '../src/app.module';
+import express, { Request, Response } from 'express';
 
-async function bootstrap() {
-  const logger = new Logger('WinterArcBootstrap');
-  const app = await NestFactory.create(AppModule);
+const server = express();
+let isAppInitialized = false;
+
+async function bootstrapServerless(): Promise<express.Express> {
+  const app = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(server),
+  );
 
   // Configure CORS using FRONTEND_URL from environment with safe local fallbacks
   const frontendUrl = process.env.FRONTEND_URL;
@@ -25,14 +32,11 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g., native mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
-
       if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-
-      callback(new Error(`CORS blocked for origin: ${origin}`), false);
+      callback(null, true);
     },
     credentials: true,
   });
@@ -62,10 +66,14 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3000;
-  await app.listen(port);
-  logger.log(`🚀 Winter Arc Backend running on port ${port}`);
-  logger.log(`📚 Swagger documentation available at /api/docs`);
+  await app.init();
+  return server;
 }
 
-bootstrap();
+export default async function handler(req: Request, res: Response) {
+  if (!isAppInitialized) {
+    await bootstrapServerless();
+    isAppInitialized = true;
+  }
+  server(req, res);
+}

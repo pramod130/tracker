@@ -192,13 +192,25 @@ export class AuthService {
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
 
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+
+    if (process.env.NODE_ENV === 'production') {
+      if (!jwtSecret) {
+        throw new Error('FATAL: JWT_SECRET environment variable is missing in production!');
+      }
+      if (!jwtRefreshSecret) {
+        throw new Error('FATAL: JWT_REFRESH_SECRET environment variable is missing in production!');
+      }
+    }
+
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET || 'winter_arc_super_secret_jwt_key_2026_discipline',
+      secret: jwtSecret || 'winter_arc_super_secret_jwt_key_2026_discipline',
       expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET || 'winter_arc_super_secret_refresh_jwt_key_2026_discipline',
+      secret: jwtRefreshSecret || 'winter_arc_super_secret_refresh_jwt_key_2026_discipline',
       expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
     });
 
